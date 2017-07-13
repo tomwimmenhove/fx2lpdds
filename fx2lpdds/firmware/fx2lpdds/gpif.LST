@@ -1,0 +1,325 @@
+C51 COMPILER V7.07   GPIF                                                                  06/27/2017 22:38:46 PAGE 1   
+
+
+C51 COMPILER V7.07, COMPILATION OF MODULE GPIF
+OBJECT MODULE PLACED IN gpif.OBJ
+COMPILER INVOKED BY: d:\Keil\C51\BIN\C51.EXE gpif.c BROWSE DEBUG OBJECTEXTEND
+
+stmt level    source
+
+   1          // This program configures the General Programmable Interface (GPIF) for FX2.     
+   2          // Please do not modify sections of text which are marked as "DO NOT EDIT ...". 
+   3          //                                                                                
+   4          // DO NOT EDIT ...                  
+   5          // GPIF Initialization              
+   6          // Interface Timing      Sync         
+   7          // Internal Ready Init   IntRdy=1     
+   8          // CTL Out Tristate-able Binary       
+   9          // SingleWrite WF Select     1     
+  10          // SingleRead WF Select      0     
+  11          // FifoWrite WF Select       2     
+  12          // FifoRead WF Select        2     
+  13          // Data Bus Idle Drive   Tristate     
+  14          // END DO NOT EDIT                  
+  15                                              
+  16          // DO NOT EDIT ...       
+  17          // GPIF Wave Names       
+  18          // Wave 0   = unused       
+  19          // Wave 1   = unused       
+  20          // Wave 2   = FIFO Wri     
+  21          // Wave 3   = unused       
+  22                                   
+  23          // GPIF Ctrl Outputs   Level   
+  24          // CTL 0    = FQ_UD    CMOS        
+  25          // CTL 1    = CLK_EN   CMOS        
+  26          // CTL 2    = WE#      CMOS        
+  27          // CTL 3    = CTL3     CMOS        
+  28          // CTL 4    = CTL4     Op Drain    
+  29          // CTL 5    = CTL5     CMOS        
+  30                                         
+  31          // GPIF Rdy Inputs         
+  32          // RDY0     = RDY0           
+  33          // RDY1     = RDY1           
+  34          // RDY2     = RDY2           
+  35          // RDY3     = RDY3           
+  36          // RDY4     = RDY4           
+  37          // RDY5     = TCXpire        
+  38          // FIFOFlag = FIFOFlag       
+  39          // IntReady = IntReady       
+  40          // END DO NOT EDIT         
+  41          // DO NOT EDIT ...                                                                         
+  42          //                                                                                         
+  43          // GPIF Waveform 0: unused                                                                  
+  44          //                                                                                         
+  45          // Interval     0         1         2         3         4         5         6     Idle (7) 
+  46          //          _________ _________ _________ _________ _________ _________ _________ _________
+  47          //                                                                                         
+  48          // AddrMode Same Val  Same Val  Same Val  Same Val  Same Val  Same Val  Same Val           
+  49          // DataMode Activate  Activate  Activate  Activate  Activate  Activate  Activate           
+  50          // NextData SameData  SameData  SameData  SameData  SameData  SameData  SameData           
+  51          // Int Trig No Int    No Int    No Int    No Int    No Int    No Int    No Int             
+  52          // IF/Wait  Wait 1    Wait 1    Wait 1    Wait 1    Wait 1    Wait 1    Wait 1             
+  53          //   Term A                                                                                
+  54          //   LFunc                                                                                 
+  55          //   Term B                                                                                
+C51 COMPILER V7.07   GPIF                                                                  06/27/2017 22:38:46 PAGE 2   
+
+  56          // Branch1                                                                                 
+  57          // Branch0                                                                                 
+  58          // Re-Exec                                                                                 
+  59          // Sngl/CRC Default   Default   Default   Default   Default   Default   Default            
+  60          // FQ_UD        0         0         0         0         0         0         0         0    
+  61          // CLK_EN       0         0         0         0         0         0         0         0    
+  62          // WE#          0         0         0         0         0         0         0         0    
+  63          // CTL3         0         0         0         0         0         0         0         0    
+  64          // CTL4         0         0         0         0         0         0         0         0    
+  65          // CTL5         0         0         0         0         0         0         0         0    
+  66          //                     
+  67          // END DO NOT EDIT     
+  68          // DO NOT EDIT ...                                                                         
+  69          //                                                                                         
+  70          // GPIF Waveform 1: unused                                                                  
+  71          //                                                                                         
+  72          // Interval     0         1         2         3         4         5         6     Idle (7) 
+  73          //          _________ _________ _________ _________ _________ _________ _________ _________
+  74          //                                                                                         
+  75          // AddrMode Same Val  Same Val  Same Val  Same Val  Same Val  Same Val  Same Val           
+  76          // DataMode Activate  Activate  Activate  Activate  Activate  Activate  Activate           
+  77          // NextData SameData  SameData  SameData  SameData  SameData  SameData  SameData           
+  78          // Int Trig No Int    No Int    No Int    No Int    No Int    No Int    No Int             
+  79          // IF/Wait  Wait 1    Wait 1    Wait 1    Wait 1    Wait 1    Wait 1    Wait 1             
+  80          //   Term A                                                                                
+  81          //   LFunc                                                                                 
+  82          //   Term B                                                                                
+  83          // Branch1                                                                                 
+  84          // Branch0                                                                                 
+  85          // Re-Exec                                                                                 
+  86          // Sngl/CRC Default   Default   Default   Default   Default   Default   Default            
+  87          // FQ_UD        0         0         0         0         0         0         0         0    
+  88          // CLK_EN       0         0         0         0         0         0         0         0    
+  89          // WE#          0         0         0         0         0         0         0         0    
+  90          // CTL3         0         0         0         0         0         0         0         0    
+  91          // CTL4         0         0         0         0         0         0         0         0    
+  92          // CTL5         0         0         0         0         0         0         0         0    
+  93          //                     
+  94          // END DO NOT EDIT     
+  95          // DO NOT EDIT ...                                                                         
+  96          //                                                                                         
+  97          // GPIF Waveform 2: FIFO Wri                                                                
+  98          //                                                                                         
+  99          // Interval     0         1         2         3         4         5         6     Idle (7) 
+ 100          //          _________ _________ _________ _________ _________ _________ _________ _________
+ 101          //                                                                                         
+ 102          // AddrMode Same Val  Same Val  Same Val  Same Val  Same Val  Same Val  Same Val           
+ 103          // DataMode Activate  Activate  Activate  Activate  Activate  Activate  Activate           
+ 104          // NextData SameData  NextData  NextData  NextData  NextData  NextData  SameData           
+ 105          // Int Trig No Int    No Int    No Int    No Int    No Int    No Int    No Int             
+ 106          // IF/Wait  Wait 1    Wait 1    Wait 1    Wait 1    Wait 1    Wait 244  IF                 
+ 107          //   Term A                                                             FIFOFlag           
+ 108          //   LFunc                                                              AND                
+ 109          //   Term B                                                             FIFOFlag           
+ 110          // Branch1                                                              Then 6             
+ 111          // Branch0                                                              Else 0             
+ 112          // Re-Exec                                                              Yes                
+ 113          // Sngl/CRC Default   Default   Default   Default   Default   Default   Default            
+ 114          // FQ_UD        1         1         1         1         1         0         0         0    
+ 115          // CLK_EN       0         0         0         0         0         0         1         0    
+ 116          // WE#          0         0         0         0         0         0         0         0    
+ 117          // CTL3         0         0         0         0         0         0         0         0    
+C51 COMPILER V7.07   GPIF                                                                  06/27/2017 22:38:46 PAGE 3   
+
+ 118          // CTL4         0         0         0         0         0         0         0         0    
+ 119          // CTL5         0         0         0         0         0         0         0         0    
+ 120          //                     
+ 121          // END DO NOT EDIT     
+ 122          // DO NOT EDIT ...                                                                         
+ 123          //                                                                                         
+ 124          // GPIF Waveform 3: unused                                                                  
+ 125          //                                                                                         
+ 126          // Interval     0         1         2         3         4         5         6     Idle (7) 
+ 127          //          _________ _________ _________ _________ _________ _________ _________ _________
+ 128          //                                                                                         
+ 129          // AddrMode Same Val  Inc Val   Same Val  Same Val  Same Val  Same Val  Same Val           
+ 130          // DataMode Activate  NO Data   NO Data   NO Data   NO Data   NO Data   NO Data            
+ 131          // NextData SameData  NextData  SameData  SameData  SameData  SameData  SameData           
+ 132          // Int Trig No Int    No Int    No Int    No Int    No Int    No Int    No Int             
+ 133          // IF/Wait  Wait 1    IF        Wait 1    Wait 1    Wait 1    Wait 1    Wait 1             
+ 134          //   Term A           TCXpire                                                              
+ 135          //   LFunc            AND                                                                  
+ 136          //   Term B           TCXpire                                                              
+ 137          // Branch1            ThenIdle                                                             
+ 138          // Branch0            Else 0                                                               
+ 139          // Re-Exec            No                                                                   
+ 140          // Sngl/CRC Default   Default   Default   Default   Default   Default   Default            
+ 141          // FQ_UD        0         0         0         0         0         0         0         0    
+ 142          // CLK_EN       0         0         0         0         0         0         0         0    
+ 143          // WE#          0         0         0         0         0         0         0         0    
+ 144          // CTL3         0         0         0         0         0         0         0         0    
+ 145          // CTL4         0         0         0         0         0         0         0         0    
+ 146          // CTL5         0         0         0         0         0         0         0         0    
+ 147          //                     
+ 148          // END DO NOT EDIT     
+ 149                                                        
+ 150          // GPIF Program Code                          
+ 151                                                        
+ 152          // DO NOT EDIT ...                            
+ 153          #include "fx2.h"                            
+ 154          #include "fx2regs.h"                        
+ 155          #include "fx2sdly.h"     // SYNCDELAY macro 
+ 156          // END DO NOT EDIT                            
+ 157                                                        
+ 158          // DO NOT EDIT ...                     
+ 159          const char xdata WaveData[128] =     
+ 160          {                                      
+ 161          // Wave 0 
+ 162          /* LenBr */ 0x01,     0x01,     0x01,     0x01,     0x01,     0x01,     0x01,     0x07,
+ 163          /* Opcode*/ 0x02,     0x02,     0x02,     0x02,     0x02,     0x02,     0x02,     0x02,
+ 164          /* Output*/ 0x00,     0x00,     0x00,     0x00,     0x00,     0x00,     0x00,     0x00,
+ 165          /* LFun  */ 0x00,     0x00,     0x00,     0x00,     0x00,     0x00,     0x00,     0x3F,
+ 166          // Wave 1 
+ 167          /* LenBr */ 0x01,     0x01,     0x01,     0x01,     0x01,     0x01,     0x01,     0x07,
+ 168          /* Opcode*/ 0x02,     0x02,     0x02,     0x02,     0x02,     0x02,     0x02,     0x02,
+ 169          /* Output*/ 0x00,     0x00,     0x00,     0x00,     0x00,     0x00,     0x00,     0x00,
+ 170          /* LFun  */ 0x00,     0x00,     0x00,     0x00,     0x00,     0x00,     0x00,     0x3F,
+ 171          // Wave 2 
+ 172          /* LenBr */ 0x01,     0x01,     0x01,     0x01,     0x01,     0xF4,     0xB0,     0x07,
+ 173          /* Opcode*/ 0x02,     0x06,     0x06,     0x06,     0x06,     0x06,     0x03,     0x02,
+ 174          /* Output*/ 0x01,     0x01,     0x01,     0x01,     0x01,     0x00,     0x02,     0x00,
+ 175          /* LFun  */ 0x00,     0x00,     0x00,     0x00,     0x00,     0x00,     0x36,     0x3F,
+ 176          // Wave 3 
+ 177          /* LenBr */ 0x01,     0x38,     0x01,     0x01,     0x01,     0x01,     0x01,     0x07,
+ 178          /* Opcode*/ 0x02,     0x0D,     0x00,     0x00,     0x00,     0x00,     0x00,     0x02,
+ 179          /* Output*/ 0x00,     0x00,     0x00,     0x00,     0x00,     0x00,     0x00,     0x00,
+C51 COMPILER V7.07   GPIF                                                                  06/27/2017 22:38:46 PAGE 4   
+
+ 180          /* LFun  */ 0x00,     0x2D,     0x00,     0x00,     0x00,     0x00,     0x00,     0x3F,
+ 181          };                     
+ 182          // END DO NOT EDIT     
+ 183                                 
+ 184          // DO NOT EDIT ...                     
+ 185          const char xdata FlowStates[36] =   
+ 186          {                                      
+ 187          /* Wave 0 FlowStates */ 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+ 188          /* Wave 1 FlowStates */ 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+ 189          /* Wave 2 FlowStates */ 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+ 190          /* Wave 3 FlowStates */ 0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+ 191          };                     
+ 192          // END DO NOT EDIT     
+ 193                                 
+ 194          // DO NOT EDIT ...                                               
+ 195          const char xdata InitData[7] =                                   
+ 196          {                                                                
+ 197          /* Regs  */ 0xE0,0x10,0x00,0x00,0xFE,0x4A,0x00     
+ 198          };                                                               
+ 199          // END DO NOT EDIT                                               
+ 200                                                                           
+ 201          // TO DO: You may add additional code below.
+ 202          
+ 203          void GpifInit( void )
+ 204          {
+ 205   1        BYTE i;
+ 206   1       
+ 207   1        // Registers which require a synchronization delay, see section 15.14
+ 208   1        // FIFORESET        FIFOPINPOLAR
+ 209   1        // INPKTEND         OUTPKTEND
+ 210   1        // EPxBCH:L         REVCTL
+ 211   1        // GPIFTCB3         GPIFTCB2
+ 212   1        // GPIFTCB1         GPIFTCB0
+ 213   1        // EPxFIFOPFH:L     EPxAUTOINLENH:L
+ 214   1        // EPxFIFOCFG       EPxGPIFFLGSEL
+ 215   1        // PINFLAGSxx       EPxFIFOIRQ
+ 216   1        // EPxFIFOIE        GPIFIRQ
+ 217   1        // GPIFIE           GPIFADRH:L
+ 218   1        // UDMACRCH:L       EPxGPIFTRIG
+ 219   1        // GPIFTRIG
+ 220   1        
+ 221   1        // Note: The pre-REVE EPxGPIFTCH/L register are affected, as well...
+ 222   1        //      ...these have been replaced by GPIFTC[B3:B0] registers
+ 223   1       
+ 224   1        // 8051 doesn't have access to waveform memories 'til
+ 225   1        // the part is in GPIF mode.
+ 226   1       
+ 227   1        IFCONFIG = 0xFE;
+ 228   1        // IFCLKSRC=1   , FIFOs executes on internal clk source
+ 229   1        // xMHz=1       , 48MHz internal clk rate
+ 230   1        // IFCLKOE=0    , Don't drive IFCLK pin signal at 48MHz
+ 231   1        // IFCLKPOL=0   , Don't invert IFCLK pin signal from internal clk
+ 232   1        // ASYNC=1      , master samples asynchronous
+ 233   1        // GSTATE=1     , Drive GPIF states out on PORTE[2:0], debug WF
+ 234   1        // IFCFG[1:0]=10, FX2 in GPIF master mode
+ 235   1       
+ 236   1        GPIFABORT = 0xFF;  // abort any waveforms pending
+ 237   1       
+ 238   1        GPIFREADYCFG = InitData[ 0 ];
+ 239   1        GPIFCTLCFG = InitData[ 1 ];
+ 240   1        GPIFIDLECS = InitData[ 2 ];
+ 241   1        GPIFIDLECTL = InitData[ 3 ];
+C51 COMPILER V7.07   GPIF                                                                  06/27/2017 22:38:46 PAGE 5   
+
+ 242   1        GPIFWFSELECT = InitData[ 5 ];
+ 243   1        GPIFREADYSTAT = InitData[ 6 ];
+ 244   1       
+ 245   1        // use dual autopointer feature... 
+ 246   1        AUTOPTRSETUP = 0x07;          // inc both pointers, 
+ 247   1                                      // ...warning: this introduces pdata hole(s)
+ 248   1                                      // ...at E67B (XAUTODAT1) and E67C (XAUTODAT2)
+ 249   1        
+ 250   1        // source
+ 251   1        AUTOPTRH1 = MSB( &WaveData );
+ 252   1        AUTOPTRL1 = LSB( &WaveData );
+ 253   1        
+ 254   1        // destination
+ 255   1        AUTOPTRH2 = 0xE4;
+ 256   1        AUTOPTRL2 = 0x00;
+ 257   1       
+ 258   1        // transfer
+ 259   1        for ( i = 0x00; i < 128; i++ )
+ 260   1        {
+ 261   2          EXTAUTODAT2 = EXTAUTODAT1;
+ 262   2        }
+ 263   1       
+ 264   1      // Configure GPIF Address pins, output initial value,
+ 265   1        PORTCCFG = 0xFF;    // [7:0] as alt. func. GPIFADR[7:0]
+ 266   1        OEC = 0xFF;         // and as outputs
+ 267   1        PORTECFG |= 0x80;   // [8] as alt. func. GPIFADR[8]
+ 268   1        OEE |= 0x80;        // and as output
+ 269   1       
+ 270   1      // ...OR... tri-state GPIFADR[8:0] pins
+ 271   1      //  PORTCCFG = 0x00;  // [7:0] as port I/O
+ 272   1      //  OEC = 0x00;       // and as inputs
+ 273   1      //  PORTECFG &= 0x7F; // [8] as port I/O
+ 274   1      //  OEE &= 0x7F;      // and as input
+ 275   1       
+ 276   1      // GPIF address pins update when GPIFADRH/L written
+ 277   1        SYNCDELAY;                    // 
+ 278   1        GPIFADRH = 0x00;    // bits[7:1] always 0
+ 279   1        SYNCDELAY;                    // 
+ 280   1        GPIFADRL = 0x00;    // point to PERIPHERAL address 0x0000
+ 281   1       
+ 282   1      // Configure GPIF FlowStates registers for Wave 0 of WaveData
+ 283   1        FLOWSTATE = FlowStates[ 0 ];
+ 284   1        FLOWLOGIC = FlowStates[ 1 ];
+ 285   1        FLOWEQ0CTL = FlowStates[ 2 ];
+ 286   1        FLOWEQ1CTL = FlowStates[ 3 ];
+ 287   1        FLOWHOLDOFF = FlowStates[ 4 ];
+ 288   1        FLOWSTB = FlowStates[ 5 ];
+ 289   1        FLOWSTBEDGE = FlowStates[ 6 ];
+ 290   1        FLOWSTBHPERIOD = FlowStates[ 7 ];
+ 291   1      }
+ 292           
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    187    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =    171    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+C51 COMPILER V7.07   GPIF                                                                  06/27/2017 22:38:46 PAGE 6   
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

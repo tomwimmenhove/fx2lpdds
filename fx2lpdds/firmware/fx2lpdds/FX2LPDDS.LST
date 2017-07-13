@@ -1,0 +1,572 @@
+C51 COMPILER V7.07   FX2LPDDS                                                              06/27/2017 22:38:45 PAGE 1   
+
+
+C51 COMPILER V7.07, COMPILATION OF MODULE FX2LPDDS
+OBJECT MODULE PLACED IN FX2LPDDS.OBJ
+COMPILER INVOKED BY: d:\Keil\C51\BIN\C51.EXE FX2LPDDS.c BROWSE DEBUG OBJECTEXTEND
+
+stmt level    source
+
+   1          //-----------------------------------------------------------------------------
+   2          //   File:      bulkloop.c
+   3          //   Contents:  Hooks required to implement USB peripheral function.
+   4          //
+   5          // $Archive: /USB/Examples/FX2LP/bulkloop/bulkloop.c $
+   6          // $Date: 3/23/05 2:55p $
+   7          // $Revision: 4 $
+   8          //
+   9          //
+  10          //-----------------------------------------------------------------------------
+  11          // Copyright 2003, Cypress Semiconductor Corporation
+  12          //-----------------------------------------------------------------------------
+  13          #pragma NOIV               // Do not generate interrupt vectors
+  14          
+  15          #include "fx2.h"
+  16          #include "fx2regs.h"
+  17          #include "syncdly.h"            // SYNCDELAY macro
+  18          
+  19          extern BOOL GotSUD;             // Received setup data flag
+  20          extern BOOL Sleep;
+  21          extern BOOL Rwuen;
+  22          extern BOOL Selfpwr;
+  23          
+  24          BYTE Configuration;             // Current configuration
+  25          BYTE AlternateSetting;          // Alternate settings
+  26          
+  27          
+  28          #define VR_NAKALL_ON    0xD0
+  29          #define VR_NAKALL_OFF   0xD1
+  30          
+  31          #define VX_BB 0xBB // GPIF write
+  32          #define VX_BC 0xBC // GPIF read 
+  33          
+  34          #define GPIFTRIGRD 4
+  35          #define GPIF_EP2 0
+  36          #define GPIF_EP4 1
+  37          #define GPIF_EP6 2
+  38          #define GPIF_EP8 3
+  39          
+  40          BOOL enum_high_speed = FALSE;     // flag to let firmware know FX2 enumerated at high speed
+  41          static WORD xFIFOBC_IN = 0x0000;  // variable that contains EP6FIFOBCH/L value
+  42          static WORD xdata LED_Count = 0;
+  43          static BYTE xdata LED_Status = 0;
+  44          
+  45          WORD addr, len, Tcount;
+  46          // ...debug LEDs: accessed via movx reads only ( through CPLD )
+  47          // it may be worth noting here that the default monitor loads at 0xC000
+  48          xdata volatile const BYTE LED0_ON  _at_ 0x8000;
+  49          xdata volatile const BYTE LED0_OFF _at_ 0x8100;
+  50          xdata volatile const BYTE LED1_ON  _at_ 0x9000;
+  51          xdata volatile const BYTE LED1_OFF _at_ 0x9100;
+  52          xdata volatile const BYTE LED2_ON  _at_ 0xA000;
+  53          xdata volatile const BYTE LED2_OFF _at_ 0xA100;
+  54          xdata volatile const BYTE LED3_ON  _at_ 0xB000;
+  55          xdata volatile const BYTE LED3_OFF _at_ 0xB100;
+C51 COMPILER V7.07   FX2LPDDS                                                              06/27/2017 22:38:45 PAGE 2   
+
+  56          // use this global variable when (de)asserting debug LEDs...
+  57          
+  58          void GpifInit();
+  59          
+  60          //-----------------------------------------------------------------------------
+  61          // Task Dispatcher hooks
+  62          //   The following hooks are called by the task dispatcher.
+  63          //-----------------------------------------------------------------------------
+  64          
+  65          unsigned char ifconfigCache;
+  66          
+  67          void TD_Init(void)             // Called once at startup
+  68          {
+  69   1              // set the CPU clock to 48MHz
+  70   1              CPUCS = ((CPUCS & ~bmCLKSPD) | bmCLKSPD1) ;
+  71   1              SYNCDELAY;
+  72   1              // set the slave FIFO interface to 48MHz
+  73   1              IFCONFIG |= 0x40;
+  74   1      
+  75   1              //change EP configuration
+  76   1              EP2CFG = 0xA0;
+  77   1              SYNCDELAY;                    
+  78   1              EP4CFG = 0x00;
+  79   1              SYNCDELAY;                    
+  80   1              EP6CFG = 0xE0;
+  81   1              SYNCDELAY;                    
+  82   1              EP8CFG = 0x00;
+  83   1      
+  84   1              // out endpoints do not come up armed
+  85   1      
+  86   1              FIFORESET = 0x80;  // set NAKALL bit to NAK all transfers from host
+  87   1              SYNCDELAY;
+  88   1              FIFORESET = 0x02;  // reset EP2 FIFO
+  89   1              SYNCDELAY;
+  90   1              FIFORESET = 0x06;  // reset EP6 FIFO
+  91   1              SYNCDELAY;
+  92   1              FIFORESET = 0x00;  // clear NAKALL bit to resume normal operation
+  93   1              SYNCDELAY;
+  94   1      
+  95   1              EP2FIFOCFG = 0x00; // allow core to see zero to one transition of auto out bit
+  96   1              SYNCDELAY;
+  97   1              EP2FIFOCFG = 0x10; // auto out mode, disable PKTEND zero length send, byte ops
+  98   1              SYNCDELAY;
+  99   1              EP6FIFOCFG = 0x08; // auto in mode, disable PKTEND zero length send, byte ops
+ 100   1              SYNCDELAY; 
+ 101   1      
+ 102   1              // enable dual autopointer feature
+ 103   1              AUTOPTRSETUP |= 0x01;
+ 104   1      
+ 105   1              GpifInit ();       // initialize GPIF registers  
+ 106   1      
+ 107   1      
+ 108   1              /* XXX: Wait states: */
+ 109   1              // Wave 2 
+ 110   1              /* LenBr */ // 0xC7,     0xC7,     0xC8,     0xC8,     0xC8,     0xAE,     0x80,     0x07,
+ 111   1      
+ 112   1      
+ 113   1              /* Set fifo flag to Empty */
+ 114   1              EP2GPIFFLGSEL &= ~3;
+ 115   1              EP2GPIFFLGSEL |= 1;
+ 116   1      
+ 117   1      
+C51 COMPILER V7.07   FX2LPDDS                                                              06/27/2017 22:38:45 PAGE 3   
+
+ 118   1              PORTACFG = 0x00;
+ 119   1      //      OEA |= 0xF3;
+ 120   1              OEA |= 0xFF;
+ 121   1              IOA &= 0xFC;
+ 122   1      
+ 123   1              IOA |= 2; // Enable DDS Clock
+ 124   1      
+ 125   1              Rwuen = TRUE;                 // Enable remote-wakeup
+ 126   1      
+ 127   1              //IFCONFIG = 0xbE;
+ 128   1              //IFCONFIG = 0x1E;
+ 129   1              /* KLABAM */
+ 130   1              GPIFTRIG = GPIF_EP2;    // launch GPIF FIFO WRITE Transaction from EP2 FIFO
+ 131   1              SYNCDELAY;
+ 132   1      
+ 133   1              IOA &= ~4; // Enable LED
+ 134   1      
+ 135   1              ifconfigCache = IFCONFIG;
+ 136   1      }
+ 137          
+ 138          
+ 139          void TD_Poll(void)              // Called repeatedly while the device is idle
+ 140          {
+ 141   1      }
+ 142          
+ 143          BOOL TD_Suspend(void)          // Called before the device goes into suspend mode
+ 144          {
+ 145   1              return(TRUE);
+ 146   1      }
+ 147          
+ 148          BOOL TD_Resume(void)          // Called after the device resumes
+ 149          {
+ 150   1              return(TRUE);
+ 151   1      }
+ 152          
+ 153          //-----------------------------------------------------------------------------
+ 154          // Device Request hooks
+ 155          //   The following hooks are called by the end point 0 device request parser.
+ 156          //-----------------------------------------------------------------------------
+ 157          
+ 158          BOOL DR_GetDescriptor(void)
+ 159          {
+ 160   1              return(TRUE);
+ 161   1      }
+ 162          
+ 163          BOOL DR_SetConfiguration(void)   // Called when a Set Configuration command is received
+ 164          {       
+ 165   1              if( EZUSB_HIGHSPEED( ) )
+ 166   1              { // FX2 enumerated at high speed
+ 167   2                      SYNCDELAY;                  
+ 168   2                      //    EP6AUTOINLENH = 0x02;       // set AUTOIN commit length to 512 bytes
+ 169   2                      EP6AUTOINLENH = 0x01;       // set AUTOIN commit length to 510 bytes
+ 170   2                      SYNCDELAY;                  
+ 171   2                      //    EP6AUTOINLENL = 0x00;
+ 172   2                      EP6AUTOINLENL = 0xfe;
+ 173   2                      SYNCDELAY;                  
+ 174   2                      enum_high_speed = TRUE;
+ 175   2              }
+ 176   1      
+ 177   1              else
+ 178   1              { // FX2 enumerated at full speed
+ 179   2                      SYNCDELAY;                   
+C51 COMPILER V7.07   FX2LPDDS                                                              06/27/2017 22:38:45 PAGE 4   
+
+ 180   2                      //EP6AUTOINLENH = 0x00;       // set AUTOIN commit length to 64 bytes
+ 181   2                      EP6AUTOINLENH = 0x00;       // set AUTOIN commit length to 60 bytes
+ 182   2                      SYNCDELAY;                   
+ 183   2                      //EP6AUTOINLENL = 0x40;
+ 184   2                      EP6AUTOINLENL = 0x3c;
+ 185   2                      SYNCDELAY;                  
+ 186   2                      enum_high_speed = FALSE;
+ 187   2              }
+ 188   1      
+ 189   1      
+ 190   1              Configuration = SETUPDAT[2];
+ 191   1              return(TRUE);            // Handled by user code
+ 192   1      }
+ 193          
+ 194          BOOL DR_GetConfiguration(void)   // Called when a Get Configuration command is received
+ 195          {
+ 196   1              EP0BUF[0] = Configuration;
+ 197   1              EP0BCH = 0;
+ 198   1              EP0BCL = 1;
+ 199   1              return(TRUE);            // Handled by user code
+ 200   1      }
+ 201          
+ 202          BOOL DR_SetInterface(void)       // Called when a Set Interface command is received
+ 203          {
+ 204   1              AlternateSetting = SETUPDAT[2];
+ 205   1              return(TRUE);            // Handled by user code
+ 206   1      }
+ 207          
+ 208          BOOL DR_GetInterface(void)       // Called when a Set Interface command is received
+ 209          {
+ 210   1              EP0BUF[0] = AlternateSetting;
+ 211   1              EP0BCH = 0;
+ 212   1              EP0BCL = 1;
+ 213   1              return(TRUE);            // Handled by user code
+ 214   1      }
+ 215          
+ 216          BOOL DR_GetStatus(void)
+ 217          {
+ 218   1              return(TRUE);
+ 219   1      }
+ 220          
+ 221          BOOL DR_ClearFeature(void)
+ 222          {
+ 223   1              return(TRUE);
+ 224   1      }
+ 225          
+ 226          BOOL DR_SetFeature(void)
+ 227          {
+ 228   1              return(TRUE);
+ 229   1      }
+ 230          
+ 231          unsigned long int ddsClockFreqHz = 124998388;
+ 232          unsigned long int ifClockFreqHz = 48007317;
+ 233          
+ 234          
+ 235          BOOL DR_VendorCmnd(void)
+ 236          {
+ 237   1              BYTE tmp;
+ 238   1              volatile BYTE *pSTATE = &GPIF_WAVE_DATA;
+ 239   1              BYTE bmRequestType = SETUPDAT[0];
+ 240   1              BYTE bmRequest = SETUPDAT[1];
+ 241   1              WORD wIndex = ( (SETUPDAT[5] << 8) + SETUPDAT[4] );
+C51 COMPILER V7.07   FX2LPDDS                                                              06/27/2017 22:38:45 PAGE 5   
+
+ 242   1              WORD wValue = ( (SETUPDAT[3] << 8) + SETUPDAT[2] );
+ 243   1              WORD wLength = ( (SETUPDAT[7] << 8) + SETUPDAT[6] );
+ 244   1      
+ 245   1              switch (bmRequest)
+ 246   1              {
+ 247   2                      case VR_NAKALL_ON:
+ 248   2                              tmp = FIFORESET;
+ 249   2                              tmp |= bmNAKALL;      
+ 250   2                              SYNCDELAY;                    
+ 251   2                              FIFORESET = tmp;
+ 252   2                              break;
+ 253   2                      case VR_NAKALL_OFF:
+ 254   2                              tmp = FIFORESET;
+ 255   2                              tmp &= ~bmNAKALL;      
+ 256   2                              SYNCDELAY;                    
+ 257   2                              FIFORESET = tmp;
+ 258   2                              break;
+ 259   2      
+ 260   2                      case 0x42:
+ 261   2                              GPIFTRIG = GPIF_EP2;    // launch GPIF FIFO WRITE Transaction from EP2 FIFO
+ 262   2                              SYNCDELAY;
+ 263   2                              break;
+ 264   2                      case 0x43:
+ 265   2                              GPIFABORT = 0xFF;;
+ 266   2                              break;
+ 267   2                      case 0x44:
+ 268   2                              IOA |= 1; // DDS in reset state
+ 269   2      //                      IOA |= 4; // Disable LED
+ 270   2                              break;
+ 271   2                      case 0x45:
+ 272   2                              IOA &= ~1; // DDS Out of reset
+ 273   2      //                      IOA &= ~4; // Enable LED
+ 274   2                              break;
+ 275   2      
+ 276   2                      case 0x50: // DDS reset
+ 277   2                              IOA = wValue & 0xff;
+ 278   2                              break;
+ 279   2      
+ 280   2                      case 0x52: // IF Clock source
+ 281   2                              /* Always set IFCLKPOL=1, ASYNC=1, GSTATE=1 and IFCFG[1:0]=10 */
+ 282   2                              ifconfigCache = (wValue | 0x1e) & (~0xfe) ;
+ 283   2                              IFCONFIG = ifconfigCache;
+ 284   2                              break;
+ 285   2      
+ 286   2                      case 0x53: // Get on-board DDS reference frequency
+ 287   2                              while(EP0CS & bmEPBUSY);
+ 288   2      
+ 289   2                              *(EP0BUF+0) = (ddsClockFreqHz >>  0) & 0xff;
+ 290   2                              *(EP0BUF+1) = (ddsClockFreqHz >>  8) & 0xff;
+ 291   2                              *(EP0BUF+2) = (ddsClockFreqHz >> 16) & 0xff;
+ 292   2                              *(EP0BUF+3) = (ddsClockFreqHz >> 24) & 0xff;
+ 293   2                              EP0BCH = 0;
+ 294   2                              EP0BCL = (BYTE)4;
+ 295   2                              break;
+ 296   2      
+ 297   2                      case 0x54: // Get on-board IF reference frequency
+ 298   2                              while(EP0CS & bmEPBUSY);
+ 299   2      
+ 300   2                              *(EP0BUF+0) = (ifClockFreqHz >>  0) & 0xff;
+ 301   2                              *(EP0BUF+1) = (ifClockFreqHz >>  8) & 0xff;
+ 302   2                              *(EP0BUF+2) = (ifClockFreqHz >> 16) & 0xff;
+ 303   2                              *(EP0BUF+3) = (ifClockFreqHz >> 24) & 0xff;
+C51 COMPILER V7.07   FX2LPDDS                                                              06/27/2017 22:38:45 PAGE 6   
+
+ 304   2                              EP0BCH = 0;
+ 305   2                              EP0BCL = (BYTE)4;
+ 306   2                              break;
+ 307   2      
+ 308   2                      case 0x55:
+ 309   2                              GPIFABORT = 0xFF;
+ 310   2                              while (!( GPIFTRIG & 0x80 ));
+ 311   2      
+ 312   2                              FIFORESET = 0x80;  // set NAKALL bit to NAK all transfers from host
+ 313   2                              SYNCDELAY;
+ 314   2                              FIFORESET = 0x02;  // reset EP2 FIFO
+ 315   2                              SYNCDELAY;
+ 316   2                              FIFORESET = 0x06;  // reset EP6 FIFO
+ 317   2                              SYNCDELAY;
+ 318   2                              FIFORESET = 0x00;  // clear NAKALL bit to resume normal operation
+ 319   2                              SYNCDELAY;
+ 320   2      
+ 321   2                              IFCONFIG |= 0x40;
+ 322   2                              SYNCDELAY;
+ 323   2                              break;
+ 324   2      
+ 325   2                      case 0x56:
+ 326   2                              pSTATE[0x45] = wValue & 0xff;
+ 327   2                              SYNCDELAY;
+ 328   2                              break;
+ 329   2      
+ 330   2                      case 0x57:
+ 331   2                              TD_Init();
+ 332   2      //                      while (!( GPIFTRIG & 0x80 ));
+ 333   2      //                      GPIFTRIG = GPIF_EP2;
+ 334   2      //                      SYNCDELAY;
+ 335   2      //                      IFCONFIG = ifconfigCache;
+ 336   2      //                      SYNCDELAY;
+ 337   2       
+ 338   2                              break;
+ 339   2      
+ 340   2                      case 0x60:
+ 341   2                              IFCONFIG |= 0x80;
+ 342   2                              break;
+ 343   2                      case 0x61:
+ 344   2                              IFCONFIG &= ~0x80;
+ 345   2                              break;
+ 346   2      
+ 347   2                      case 0xc0:
+ 348   2                          IFCONFIG = 0xFE;
+ 349   2                              SYNCDELAY;
+ 350   2                              GPIFABORT = 0xFF; 
+ 351   2                              SYNCDELAY;
+ 352   2      
+ 353   2                              USBCS |= 0x08; // Disconnect
+ 354   2                              USBCS &= ~0x02; // Re-numerate
+ 355   2                              USBCS &= ~0x08; // Reconnect
+ 356   2      
+ 357   2                              for(;;);
+ 358   2      
+ 359   2                              break;
+ 360   2      
+ 361   2                      default:
+ 362   2                              return(TRUE);
+ 363   2              }
+ 364   1      
+ 365   1              return(FALSE);
+C51 COMPILER V7.07   FX2LPDDS                                                              06/27/2017 22:38:45 PAGE 7   
+
+ 366   1      }
+ 367          
+ 368          //-----------------------------------------------------------------------------
+ 369          // USB Interrupt Handlers
+ 370          //   The following functions are called by the USB interrupt jump table.
+ 371          //-----------------------------------------------------------------------------
+ 372          
+ 373          // Setup Data Available Interrupt Handler
+ 374          void ISR_Sudav(void) interrupt 0
+ 375          {
+ 376   1              GotSUD = TRUE;            // Set flag
+ 377   1              EZUSB_IRQ_CLEAR();
+ 378   1              USBIRQ = bmSUDAV;         // Clear SUDAV IRQ
+ 379   1      }
+ 380          
+ 381          // Setup Token Interrupt Handler
+ 382          void ISR_Sutok(void) interrupt 0
+ 383          {
+ 384   1              EZUSB_IRQ_CLEAR();
+ 385   1              USBIRQ = bmSUTOK;         // Clear SUTOK IRQ
+ 386   1      }
+ 387          
+ 388          void ISR_Sof(void) interrupt 0
+ 389          {
+ 390   1              EZUSB_IRQ_CLEAR();
+ 391   1              USBIRQ = bmSOF;            // Clear SOF IRQ
+ 392   1      }
+ 393          
+ 394          void ISR_Ures(void) interrupt 0
+ 395          {
+ 396   1              // whenever we get a USB reset, we should revert to full speed mode
+ 397   1              pConfigDscr = pFullSpeedConfigDscr;
+ 398   1              ((CONFIGDSCR xdata *) pConfigDscr)->type = CONFIG_DSCR;
+ 399   1              pOtherConfigDscr = pHighSpeedConfigDscr;
+ 400   1              ((CONFIGDSCR xdata *) pOtherConfigDscr)->type = OTHERSPEED_DSCR;
+ 401   1      
+ 402   1              EZUSB_IRQ_CLEAR();
+ 403   1              USBIRQ = bmURES;         // Clear URES IRQ
+ 404   1      }
+ 405          
+ 406          void ISR_Susp(void) interrupt 0
+ 407          {
+ 408   1              Sleep = TRUE;
+ 409   1              EZUSB_IRQ_CLEAR();
+ 410   1              USBIRQ = bmSUSP;
+ 411   1      }
+ 412          
+ 413          void ISR_Highspeed(void) interrupt 0
+ 414          {
+ 415   1              if (EZUSB_HIGHSPEED())
+ 416   1              {
+ 417   2                      pConfigDscr = pHighSpeedConfigDscr;
+ 418   2                      ((CONFIGDSCR xdata *) pConfigDscr)->type = CONFIG_DSCR;
+ 419   2                      pOtherConfigDscr = pFullSpeedConfigDscr;
+ 420   2                      ((CONFIGDSCR xdata *) pOtherConfigDscr)->type = OTHERSPEED_DSCR;
+ 421   2              }
+ 422   1      
+ 423   1              EZUSB_IRQ_CLEAR();
+ 424   1              USBIRQ = bmHSGRANT;
+ 425   1      }
+ 426          void ISR_Ep0ack(void) interrupt 0
+ 427          {
+C51 COMPILER V7.07   FX2LPDDS                                                              06/27/2017 22:38:45 PAGE 8   
+
+ 428   1      }
+ 429          void ISR_Stub(void) interrupt 0
+ 430          {
+ 431   1      }
+ 432          void ISR_Ep0in(void) interrupt 0
+ 433          {
+ 434   1      }
+ 435          void ISR_Ep0out(void) interrupt 0
+ 436          {
+ 437   1      }
+ 438          void ISR_Ep1in(void) interrupt 0
+ 439          {
+ 440   1      }
+ 441          void ISR_Ep1out(void) interrupt 0
+ 442          {
+ 443   1      }
+ 444          void ISR_Ep2inout(void) interrupt 0
+ 445          {
+ 446   1      }
+ 447          void ISR_Ep4inout(void) interrupt 0
+ 448          {
+ 449   1      }
+ 450          void ISR_Ep6inout(void) interrupt 0
+ 451          {
+ 452   1      }
+ 453          void ISR_Ep8inout(void) interrupt 0
+ 454          {
+ 455   1      }
+ 456          void ISR_Ibn(void) interrupt 0
+ 457          {
+ 458   1      }
+ 459          void ISR_Ep0pingnak(void) interrupt 0
+ 460          {
+ 461   1      }
+ 462          void ISR_Ep1pingnak(void) interrupt 0
+ 463          {
+ 464   1      }
+ 465          void ISR_Ep2pingnak(void) interrupt 0
+ 466          {
+ 467   1      }
+ 468          void ISR_Ep4pingnak(void) interrupt 0
+ 469          {
+ 470   1      }
+ 471          void ISR_Ep6pingnak(void) interrupt 0
+ 472          {
+ 473   1      }
+ 474          void ISR_Ep8pingnak(void) interrupt 0
+ 475          {
+ 476   1      }
+ 477          void ISR_Errorlimit(void) interrupt 0
+ 478          {
+ 479   1      }
+ 480          void ISR_Ep2piderror(void) interrupt 0
+ 481          {
+ 482   1      }
+ 483          void ISR_Ep4piderror(void) interrupt 0
+ 484          {
+ 485   1      }
+ 486          void ISR_Ep6piderror(void) interrupt 0
+ 487          {
+ 488   1      }
+ 489          void ISR_Ep8piderror(void) interrupt 0
+C51 COMPILER V7.07   FX2LPDDS                                                              06/27/2017 22:38:45 PAGE 9   
+
+ 490          {
+ 491   1      }
+ 492          void ISR_Ep2pflag(void) interrupt 0
+ 493          {
+ 494   1      }
+ 495          void ISR_Ep4pflag(void) interrupt 0
+ 496          {
+ 497   1      }
+ 498          void ISR_Ep6pflag(void) interrupt 0
+ 499          {
+ 500   1      }
+ 501          void ISR_Ep8pflag(void) interrupt 0
+ 502          {
+ 503   1      }
+ 504          void ISR_Ep2eflag(void) interrupt 0
+ 505          {
+ 506   1      }
+ 507          void ISR_Ep4eflag(void) interrupt 0
+ 508          {
+ 509   1      }
+ 510          void ISR_Ep6eflag(void) interrupt 0
+ 511          {
+ 512   1      }
+ 513          void ISR_Ep8eflag(void) interrupt 0
+ 514          {
+ 515   1      }
+ 516          void ISR_Ep2fflag(void) interrupt 0
+ 517          {
+ 518   1      }
+ 519          void ISR_Ep4fflag(void) interrupt 0
+ 520          {
+ 521   1      }
+ 522          void ISR_Ep6fflag(void) interrupt 0
+ 523          {
+ 524   1      }
+ 525          void ISR_Ep8fflag(void) interrupt 0
+ 526          {
+ 527   1      }
+ 528          void ISR_GpifComplete(void) interrupt 0
+ 529          {
+ 530   1      }
+ 531          void ISR_GpifWaveform(void) interrupt 0
+ 532          {
+ 533   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    973    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =      3    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =     19       9
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =      1    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

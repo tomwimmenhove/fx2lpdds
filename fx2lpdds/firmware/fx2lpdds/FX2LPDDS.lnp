@@ -1,0 +1,10 @@
+"fw.obj",
+"FX2LPDDS.obj",
+"dscr.obj",
+".\Target\Lib\LP\USBJmpTb.OBJ",
+".\Target\Lib\LP\EZUSB.LIB",
+"gpif.obj" 
+TO "FX2LPDDS" 
+RAMSIZE(256) 
+CODE( 0x80 )
+XDATA( 0x1000 )
